@@ -22,7 +22,8 @@ class Evaluate(keras.callbacks.Callback):
     """ Evaluation callback for arbitrary datasets.
     """
 
-    def __init__(self, generator, iou_threshold=0.5, score_threshold=0.05, max_detections=100, save_path=None, tensorboard=None, verbose=1):
+    def __init__(self, generator, iou_threshold=0.5, score_threshold=0.05, max_detections=100, save_path=None,
+                 tensorboard=None, verbose=1):
         """ Evaluate a given dataset using a given model at the end of every epoch during training.
 
         # Arguments
@@ -34,13 +35,13 @@ class Evaluate(keras.callbacks.Callback):
             tensorboard     : Instance of keras.callbacks.TensorBoard used to log the mAP value.
             verbose         : Set the verbosity level, by default this is set to 1.
         """
-        self.generator       = generator
-        self.iou_threshold   = iou_threshold
+        self.generator = generator
+        self.iou_threshold = iou_threshold
         self.score_threshold = score_threshold
-        self.max_detections  = max_detections
-        self.save_path       = save_path
-        self.tensorboard     = tensorboard
-        self.verbose         = verbose
+        self.max_detections = max_detections
+        self.save_path = save_path
+        self.tensorboard = tensorboard
+        self.verbose = verbose
 
         super(Evaluate, self).__init__()
 
@@ -48,26 +49,35 @@ class Evaluate(keras.callbacks.Callback):
         logs = logs or {}
 
         # run evaluation
-        average_precisions = evaluate(
+        metrics = evaluate(
             self.generator,
             self.model,
             iou_threshold=self.iou_threshold,
             score_threshold=self.score_threshold,
             max_detections=self.max_detections,
-            save_path=self.save_path
+            save_path=self.save_path,
+            print_evaluation=False
         )
 
         # compute per class average precision
         present_classes = 0
-        precision = 0
-        for label, (average_precision, num_annotations ) in average_precisions.items():
+        mAP_sum = 0
+        mAP50_sum = 0
+        mAP75_sum = 0
+
+        for label, (eval_metrics, ap, ap50, ap75) in metrics.items():
+            num_annotations = eval_metrics.get("num_annotations")
             if self.verbose == 1:
                 print('{:.0f} instances of class'.format(num_annotations),
-                      self.generator.label_to_name(label), 'with average precision: {:.4f}'.format(average_precision))
+                      self.generator.label_to_name(label), 'with average precision: {:.4f}'.format(ap))
             if num_annotations > 0:
                 present_classes += 1
-                precision       += average_precision
-        self.mean_ap = precision / present_classes
+                mAP_sum += ap
+                mAP50_sum += ap50
+                mAP75_sum += ap75
+        self.mean_ap = mAP_sum / present_classes
+        self.mAP50 = mAP50_sum / present_classes
+        self.mAP75 = mAP75_sum / present_classes
 
         if self.tensorboard is not None and self.tensorboard.writer is not None:
             import tensorflow as tf
@@ -75,9 +85,19 @@ class Evaluate(keras.callbacks.Callback):
             summary_value = summary.value.add()
             summary_value.simple_value = self.mean_ap
             summary_value.tag = "mAP"
+            # custom
+            summary_value = summary.value.add()
+            summary_value.simple_value = self.mAP50
+            summary_value.tag = "mAP50"
+            summary_value = summary.value.add()
+            summary_value.simple_value = self.mAP75
+            summary_value.tag = "mAP75"
+
             self.tensorboard.writer.add_summary(summary, epoch)
 
         logs['mAP'] = self.mean_ap
+        logs['mAP50'] = self.mAP50
+        logs['mAP75'] = self.mAP75
 
         if self.verbose == 1:
             print('mAP: {:.4f}'.format(self.mean_ap))

@@ -72,8 +72,8 @@ def _get_detections(generator, model, score_threshold=0.05, max_detections=100, 
     all_detections = [[None for i in range(generator.num_classes())] for j in range(generator.size())]
 
     for i in range(generator.size()):
-        raw_image    = generator.load_image(i)
-        image        = generator.preprocess_image(raw_image.copy())
+        raw_image = generator.load_image(i)
+        image = generator.preprocess_image(raw_image.copy())
         image, scale = generator.resize_image(image)
 
         # run network
@@ -92,10 +92,11 @@ def _get_detections(generator, model, score_threshold=0.05, max_detections=100, 
         scores_sort = np.argsort(-scores)[:max_detections]
 
         # select detections
-        image_boxes      = boxes[0, indices[scores_sort], :]
-        image_scores     = scores[scores_sort]
-        image_labels     = labels[0, indices[scores_sort]]
-        image_detections = np.concatenate([image_boxes, np.expand_dims(image_scores, axis=1), np.expand_dims(image_labels, axis=1)], axis=1)
+        image_boxes = boxes[0, indices[scores_sort], :]
+        image_scores = scores[scores_sort]
+        image_labels = labels[0, indices[scores_sort]]
+        image_detections = np.concatenate(
+            [image_boxes, np.expand_dims(image_scores, axis=1), np.expand_dims(image_labels, axis=1)], axis=1)
 
         if save_path is not None:
             draw_annotations(raw_image, generator.load_annotations(i), label_to_name=generator.label_to_name)
@@ -138,13 +139,129 @@ def _get_annotations(generator):
     return all_annotations
 
 
+def _eval_iou(iou, generator, all_detections, all_annotations):
+    metrics = {}
+    # process detections and annotations
+    for label in range(generator.num_classes()):
+        false_positives = np.zeros((0,))
+        true_positives = np.zeros((0,))
+        scores = np.zeros((0,))
+        num_annotations = 0.0
+        num_detections = 0.0
+        # loop all images
+        for i in range(generator.size()):
+            detections = all_detections[i][label]
+            annotations = all_annotations[i][label]
+            num_annotations += annotations.shape[0]
+            num_detections += detections.shape[0]
+            detected_annotations = []
+            # loop all detections in image
+            for d in detections:
+                scores = np.append(scores, d[4])
+
+                if annotations.shape[0] == 0:
+                    false_positives = np.append(false_positives, 1)
+                    true_positives = np.append(true_positives, 0)
+                    continue
+
+                overlaps = compute_overlap(np.expand_dims(d, axis=0), annotations)
+                assigned_annotation = np.argmax(overlaps, axis=1)
+                max_overlap = overlaps[0, assigned_annotation]
+
+                if max_overlap >= iou and assigned_annotation not in detected_annotations:
+                    false_positives = np.append(false_positives, 0)
+                    true_positives = np.append(true_positives, 1)
+                    detected_annotations.append(assigned_annotation)
+                else:
+                    false_positives = np.append(false_positives, 1)
+                    true_positives = np.append(true_positives, 0)
+
+        # no annotations -> AP for this class is 0 (is this correct?)
+        if num_annotations == 0:
+            metrics[label] = 0
+            continue
+        # sort by score
+        indices = np.argsort(-scores)
+        false_positives = false_positives[indices]
+        true_positives = true_positives[indices]
+        # calculate percentage of "of xx detections, xx are true positives"
+        true_pos_percentage = np.mean(true_positives)
+        # calculate percentage of "of xx detections, xx are false positives"
+        false_pos_percentage = np.mean(false_positives)
+        true_pos_count = np.sum(true_positives)
+        false_pos_count = np.sum(false_positives)
+        false_neg_count = (num_annotations - np.sum(true_positives))
+        false_neg_percentage = false_neg_count / num_annotations
+        # compute false positives and true positives
+        false_positives = np.cumsum(false_positives)
+        true_positives = np.cumsum(true_positives)
+
+        # compute recall precision f1
+        precision = true_pos_count / (true_pos_count + false_pos_count)
+        recall = true_pos_count / (true_pos_count + false_neg_count)
+        if recall == 0 or precision == 0:
+            f1 = 0
+        else:
+            f1 = 2 * precision * recall / (precision + recall)
+
+        recall_arr = true_positives / num_annotations
+        precision_arr = true_positives / np.maximum(true_positives + false_positives, np.finfo(np.float64).eps)
+
+        # compute average precision
+        average_precision = _compute_ap(recall_arr, precision_arr)
+        metrics[label] = (iou,
+                          num_annotations, num_detections, true_pos_count, true_pos_percentage, false_pos_count,
+                          false_pos_percentage,
+                          false_neg_count, false_neg_percentage, precision, recall, f1, average_precision
+                          )
+    return metrics
+
+
+def _print_evaluation(metrics, generator):
+    present_classes = 0
+    all_classes_ap = 0
+    all_classes_ap50 = 0
+    all_classes_ap75 = 0
+    print('############################## Evaluation Results #################################')
+    for label, (eval_metrics, ap, ap50, ap75) in metrics.items():
+        (iou, num_annotations, num_detections, true_pos_count, true_pos_percentage, false_pos_count,
+         false_pos_percentage, false_neg_count, false_neg_percentage, precision, recall, f1,
+         average_precision) = eval_metrics
+        print('---------------------------------class ', generator.label_to_name(label))
+        print('{:.0f} annotations of class'.format(num_annotations), generator.label_to_name(label), 'with:')
+        print('{:.0f} annotations not detected'.format(false_neg_count),
+              '({:.4f} false negatives)'.format(false_neg_percentage))
+        print('{:.0f} detections of class'.format(num_detections), generator.label_to_name(label), 'with:')
+        print('IOU of {:.2f}'.format(iou))
+        print('{:.0f} matches'.format(true_pos_count), '({:.4f} true positives)'.format(true_pos_percentage))
+        print('{:.0f} false detections'.format(false_pos_count),
+              '({:.4f} false positives)'.format(false_pos_percentage))
+        print('precision: {:.4f}'.format(precision))
+        print('recall: {:.4f}'.format(recall))
+        print('f1 score: {:.4f}'.format(f1))
+        print('average precision for this IOU: {:.4f}'.format(average_precision))
+        print('class mAP: {:.4f}'.format(ap), 'class mAP50: {:.4f}'.format(ap50),
+              'class mAP75: {:.4f}'.format(ap75))
+        print('-----------------------------------------------------------------------')
+        if num_annotations > 0:
+            present_classes += 1
+            all_classes_ap += ap
+            all_classes_ap50 += ap50
+            all_classes_ap75 += ap75
+    print('all classes: mAP : {:.4f}'.format(all_classes_ap / present_classes),
+          'mAP50 : {:.4f}'.format(all_classes_ap50 / present_classes),
+          'mAP75 : {:.4f}'.format(all_classes_ap75 / present_classes))
+    print('#################################################################################')
+
+
 def evaluate(
-    generator,
-    model,
-    iou_threshold=0.5,
-    score_threshold=0.05,
-    max_detections=100,
-    save_path=None
+        generator,
+        model,
+        iou_threshold=0.5,
+        score_threshold=0.05,
+        max_detections=100,
+        save_path=None,
+        print_evaluation=True
 ):
     """ Evaluate a given dataset using a given model.
 
@@ -159,68 +276,34 @@ def evaluate(
         A dict mapping class names to mAP scores.
     """
     # gather all detections and annotations
-    all_detections     = _get_detections(generator, model, score_threshold=score_threshold, max_detections=max_detections, save_path=save_path)
-    all_annotations    = _get_annotations(generator)
-    average_precisions = {}
+    all_detections = _get_detections(generator, model, score_threshold=score_threshold, max_detections=max_detections,
+                                     save_path=save_path)
+    all_annotations = _get_annotations(generator)
 
     # all_detections = pickle.load(open('all_detections.pkl', 'rb'))
     # all_annotations = pickle.load(open('all_annotations.pkl', 'rb'))
     # pickle.dump(all_detections, open('all_detections.pkl', 'wb'))
     # pickle.dump(all_annotations, open('all_annotations.pkl', 'wb'))
+    eval_metrics = {}
+    average_precisions = np.zeros((10, generator.num_classes()))
+    count = 0
+    for i in range(50, 100, 5):
+        iou = i / 100
+        iou_metrics = _eval_iou(iou, generator, all_detections, all_annotations)
+        for label in range(generator.num_classes()):
+            average_precisions[count][label] = iou_metrics[label][-1]
+        if iou == iou_threshold:
+            eval_metrics = iou_metrics
+        count += 1
+    all_metrics = {}
+    ap = np.mean(average_precisions, axis=0)
+    ap50 = average_precisions[0]
+    ap75 = average_precisions[5]
 
-    # process detections and annotations
     for label in range(generator.num_classes()):
-        false_positives = np.zeros((0,))
-        true_positives  = np.zeros((0,))
-        scores          = np.zeros((0,))
-        num_annotations = 0.0
+        all_metrics[label] = (eval_metrics[label], ap[label], ap50[label], ap75[label])
 
-        for i in range(generator.size()):
-            detections           = all_detections[i][label]
-            annotations          = all_annotations[i][label]
-            num_annotations     += annotations.shape[0]
-            detected_annotations = []
+    if print_evaluation:
+        _print_evaluation(all_metrics, generator)
 
-            for d in detections:
-                scores = np.append(scores, d[4])
-
-                if annotations.shape[0] == 0:
-                    false_positives = np.append(false_positives, 1)
-                    true_positives  = np.append(true_positives, 0)
-                    continue
-
-                overlaps            = compute_overlap(np.expand_dims(d, axis=0), annotations)
-                assigned_annotation = np.argmax(overlaps, axis=1)
-                max_overlap         = overlaps[0, assigned_annotation]
-
-                if max_overlap >= iou_threshold and assigned_annotation not in detected_annotations:
-                    false_positives = np.append(false_positives, 0)
-                    true_positives  = np.append(true_positives, 1)
-                    detected_annotations.append(assigned_annotation)
-                else:
-                    false_positives = np.append(false_positives, 1)
-                    true_positives  = np.append(true_positives, 0)
-
-        # no annotations -> AP for this class is 0 (is this correct?)
-        if num_annotations == 0:
-            average_precisions[label] = 0, 0
-            continue
-
-        # sort by score
-        indices         = np.argsort(-scores)
-        false_positives = false_positives[indices]
-        true_positives  = true_positives[indices]
-
-        # compute false positives and true positives
-        false_positives = np.cumsum(false_positives)
-        true_positives  = np.cumsum(true_positives)
-
-        # compute recall and precision
-        recall    = true_positives / num_annotations
-        precision = true_positives / np.maximum(true_positives + false_positives, np.finfo(np.float64).eps)
-
-        # compute average precision
-        average_precision  = _compute_ap(recall, precision)
-        average_precisions[label] = average_precision, num_annotations
-
-    return average_precisions
+    return all_metrics

@@ -24,7 +24,7 @@ import tensorflow as tf
 # Allow relative imports when being executed as script.
 if __name__ == "__main__" and __package__ is None:
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
-    import keras_retinanet.bin  # noqa: F401
+
     __package__ = "keras_retinanet.bin"
 
 # Change these to absolute imports if you copy this script outside the keras_retinanet package.
@@ -79,7 +79,7 @@ def create_generator(args):
 def parse_args(args):
     """ Parse the arguments.
     """
-    parser     = argparse.ArgumentParser(description='Evaluation script for a RetinaNet network.')
+    parser = argparse.ArgumentParser(description='Evaluation script for a RetinaNet network.')
     subparsers = parser.add_subparsers(help='Arguments for specific dataset types.', dest='dataset_type')
     subparsers.required = True
 
@@ -93,16 +93,22 @@ def parse_args(args):
     csv_parser.add_argument('annotations', help='Path to CSV file containing annotations for evaluation.')
     csv_parser.add_argument('classes', help='Path to a CSV file containing class label mapping.')
 
-    parser.add_argument('model',             help='Path to RetinaNet model.')
-    parser.add_argument('--convert-model',   help='Convert the model to an inference model (ie. the input is a training model).', action='store_true')
-    parser.add_argument('--backbone',        help='The backbone of the model.', default='resnet50')
-    parser.add_argument('--gpu',             help='Id of the GPU to use (as reported by nvidia-smi).')
-    parser.add_argument('--score-threshold', help='Threshold on score to filter detections with (defaults to 0.05).', default=0.05, type=float)
-    parser.add_argument('--iou-threshold',   help='IoU Threshold to count for a positive detection (defaults to 0.5).', default=0.5, type=float)
-    parser.add_argument('--max-detections',  help='Max Detections per image (defaults to 100).', default=100, type=int)
-    parser.add_argument('--save-path',       help='Path for saving images with detections (doesn\'t work for COCO).')
-    parser.add_argument('--image-min-side',  help='Rescale the image so the smallest side is min_side.', type=int, default=800)
-    parser.add_argument('--image-max-side',  help='Rescale the image if the largest side is larger than max_side.', type=int, default=1333)
+    parser.add_argument('model', help='Path to RetinaNet model.')
+    parser.add_argument('--convert-model',
+                        help='Convert the model to an inference model (ie. the input is a training model).',
+                        action='store_true')
+    parser.add_argument('--backbone', help='The backbone of the model.', default='resnet50')
+    parser.add_argument('--gpu', help='Id of the GPU to use (as reported by nvidia-smi).')
+    parser.add_argument('--score-threshold', help='Threshold on score to filter detections with (defaults to 0.05).',
+                        default=0.05, type=float)
+    parser.add_argument('--iou-threshold', help='IoU Threshold to count for a positive detection (defaults to 0.5).',
+                        default=0.5, type=float)
+    parser.add_argument('--max-detections', help='Max Detections per image (defaults to 100).', default=100, type=int)
+    parser.add_argument('--save-path', help='Path for saving images with detections (doesn\'t work for COCO).')
+    parser.add_argument('--image-min-side', help='Rescale the image so the smallest side is min_side.', type=int,
+                        default=800)
+    parser.add_argument('--image-max-side', help='Rescale the image if the largest side is larger than max_side.',
+                        type=int, default=1333)
 
     return parser.parse_args(args)
 
@@ -140,25 +146,26 @@ def main(args=None):
         from ..utils.coco_eval import evaluate_coco
         evaluate_coco(generator, model, args.score_threshold)
     else:
-        average_precisions = evaluate(
+        evaluate(
             generator,
             model,
             iou_threshold=args.iou_threshold,
             score_threshold=args.score_threshold,
             max_detections=args.max_detections,
-            save_path=args.save_path
+            save_path=args.save_path,
+            print_evaluation=True
         )
 
-        # print evaluation
-        present_classes = 0
-        precision = 0
-        for label, (average_precision, num_annotations) in average_precisions.items():
-            print('{:.0f} instances of class'.format(num_annotations),
-                  generator.label_to_name(label), 'with average precision: {:.4f}'.format(average_precision))
-            if num_annotations > 0:
-                present_classes += 1
-                precision       += average_precision
-        print('mAP: {:.4f}'.format(precision / present_classes))
+        # # print evaluation
+        # present_classes = 0
+        # precision = 0
+        # for label, (average_precision, num_annotations) in metrics.items():
+        #     print('{:.0f} instances of class'.format(num_annotations),
+        #           generator.label_to_name(label), 'with average precision: {:.4f}'.format(average_precision))
+        #     if num_annotations > 0:
+        #         present_classes += 1
+        #         precision       += average_precision
+        # print('mAP: {:.4f}'.format(precision / present_classes))
 
 
 if __name__ == '__main__':
