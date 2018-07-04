@@ -4,3 +4,7 @@ __pycache__/
 *.so
 /.pytest_cache
 /.cache
+debug_custom.py
+inference_custom.py
+train_custom.py
+evaluate_custom.py
