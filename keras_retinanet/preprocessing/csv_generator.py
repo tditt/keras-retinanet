@@ -66,23 +66,39 @@ def _read_annotations(csv_reader, classes):
     result = {}
     for line, row in enumerate(csv_reader):
         line += 1
-
         try:
-            img_file, x1, y1, x2, y2, class_name = row[:6]
+            img_file, file_size, file_attributes, region_count, region_id, region_shape_attributes, region_attributes = row[
+                                                                                                                        :7]
+            if img_file == 'filename': continue
+            region_shape_attributes_no_brackets = region_shape_attributes.replace("{", "").replace("}", "")
+            if region_shape_attributes_no_brackets == '': continue
+            shape_arr = region_shape_attributes_no_brackets.split(",")
+            x1 = shape_arr[1].rpartition(":")[2]
+            y1 = shape_arr[2].rpartition(":")[2]
+            width = shape_arr[3].rpartition(":")[2]
+            height = shape_arr[4].rpartition(":")[2]
         except ValueError:
-            raise_from(ValueError('line {}: format should be \'img_file,x1,y1,x2,y2,class_name\' or \'img_file,,,,,\''.format(line)), None)
-
+            raise_from(
+                ValueError(
+                    'line {}: format should be \'img_file,x1,y1,x2,y2,class_name\' or \'img_file,,,,,\''.format(line)),
+                None)
         if img_file not in result:
             result[img_file] = []
-
+        class_name = 'crater'
         # If a row contains only an image path, it's an image without annotations.
-        if (x1, y1, x2, y2, class_name) == ('', '', '', '', ''):
+        if (x1, y1, width, height) == ('', '', '', ''):
             continue
 
         x1 = _parse(x1, int, 'line {}: malformed x1: {{}}'.format(line))
         y1 = _parse(y1, int, 'line {}: malformed y1: {{}}'.format(line))
-        x2 = _parse(x2, int, 'line {}: malformed x2: {{}}'.format(line))
-        y2 = _parse(y2, int, 'line {}: malformed y2: {{}}'.format(line))
+        width = _parse(width, int, 'line {}: malformed x2: {{}}'.format(line))
+        height = _parse(height, int, 'line {}: malformed y2: {{}}'.format(line))
+
+        # Don't add boxes where longest side is less than 12 pixels
+        if max(width, height) < 12: continue
+
+        x2 = x1 + width
+        y2 = y1 + height
 
         # Check that the bounding box is valid.
         if x2 <= x1:
