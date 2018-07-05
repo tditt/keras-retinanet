@@ -66,7 +66,7 @@ class Evaluate(keras.callbacks.Callback):
         mAP75_sum = 0
 
         for label, (eval_metrics, ap, ap50, ap75) in metrics.items():
-            num_annotations = eval_metrics.get("num_annotations")
+            num_annotations = eval_metrics[1]
             if self.verbose == 1:
                 print('{:.0f} instances of class'.format(num_annotations),
                       self.generator.label_to_name(label), 'with average precision: {:.4f}'.format(ap))
