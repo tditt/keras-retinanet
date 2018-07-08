@@ -25,7 +25,7 @@ def default_classification_model(
     num_classes,
     num_anchors,
     pyramid_feature_size=256,
-    prior_probability=0.01,
+    prior_probability=0.001,
     classification_feature_size=256,
     name='classification_submodel'
 ):
