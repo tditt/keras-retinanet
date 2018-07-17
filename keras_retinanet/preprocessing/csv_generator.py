@@ -60,28 +60,27 @@ def _read_classes(csv_reader):
     return result
 
 
-def _read_annotations(csv_reader, classes):
+def _limit(v, v_min, v_max):
+    return min(max(v, min), max)
+
+
+def read_annotations(csv_reader, classes):
     """ Read annotations from the csv_reader.
     """
     result = {}
     for line, row in enumerate(csv_reader):
         line += 1
-        try:
-            img_file, file_size, file_attributes, region_count, region_id, region_shape_attributes, region_attributes = row[
-                                                                                                                        :7]
-            if img_file == 'filename': continue
-            region_shape_attributes_no_brackets = region_shape_attributes.replace("{", "").replace("}", "")
-            if region_shape_attributes_no_brackets == '': continue
+        img_file, file_size, file_attributes, region_count, region_id, region_shape_attributes, region_attributes = row[
+                                                                                                                    :7]
+        if img_file == 'filename': continue
+        region_shape_attributes_no_brackets = region_shape_attributes.replace("{", "").replace("}", "")
+        (x1, y1, width, height) = ('', '', '', '')
+        if not region_shape_attributes_no_brackets == '':
             shape_arr = region_shape_attributes_no_brackets.split(",")
             x1 = shape_arr[1].rpartition(":")[2]
             y1 = shape_arr[2].rpartition(":")[2]
             width = shape_arr[3].rpartition(":")[2]
             height = shape_arr[4].rpartition(":")[2]
-        except ValueError:
-            raise_from(
-                ValueError(
-                    'line {}: format should be \'img_file,x1,y1,x2,y2,class_name\' or \'img_file,,,,,\''.format(line)),
-                None)
         if img_file not in result:
             result[img_file] = []
         class_name = 'crater'
@@ -94,11 +93,18 @@ def _read_annotations(csv_reader, classes):
         width = _parse(width, int, 'line {}: malformed x2: {{}}'.format(line))
         height = _parse(height, int, 'line {}: malformed y2: {{}}'.format(line))
 
-        # Don't add boxes where longest side is less than 12 pixels
-        if max(width, height) < 12: continue
+        # Don't add boxes where longest side is less than 7 pixels or the shortest less than 4
+        if max(width, height) < 7: continue
+        if min(width, height) < 4: continue
 
         x2 = x1 + width
         y2 = y1 + height
+
+        # Cut off boxes at image borders
+        x1 = _limit(x1, 0, 415)
+        x2 = _limit(x2, 0, 415)
+        y1 = _limit(y1, 0, 415)
+        y2 = _limit(y2, 0, 415)
 
         # Check that the bounding box is valid.
         if x2 <= x1:
@@ -114,7 +120,25 @@ def _read_annotations(csv_reader, classes):
     return result
 
 
-def _open_for_csv(path):
+def write_annotations(writer, image_data):
+    writer.writerow(['filename', 'file_size', 'file_attributes', 'region_count', 'region_id', 'region_shape_attributes',
+                     'region_attributes'])
+    for image, boxes in image_data.items():
+        region_count = len(boxes)
+        for region_id, box in enumerate(boxes):
+            x1 = int(box.get('x1'))
+            y1 = int(box.get('y1'))
+            x2 = int(box.get('x2'))
+            y2 = int(box.get('y2'))
+            line = '{"name":"rect","x":' + str(x1)
+            line += ',"y":' + str(y1)
+            line += ',"width":' + str(x2 - x1)
+            line += ',"height":' + str(y2 - y1)
+            line += '}'
+            writer.writerow([image, '', '{}', region_count, region_id, line, '{}'])
+
+
+def open_for_csv(path):
     """ Open a file with flags suitable for csv.reader.
 
     This is different for python2 it means with mode 'rb',
@@ -133,11 +157,11 @@ class CSVGenerator(Generator):
     """
 
     def __init__(
-        self,
-        csv_data_file,
-        csv_class_file,
-        base_dir=None,
-        **kwargs
+            self,
+            csv_data_file,
+            csv_class_file,
+            base_dir=None,
+            **kwargs
     ):
         """ Initialize a CSV data generator.
 
@@ -147,8 +171,8 @@ class CSVGenerator(Generator):
             base_dir: Directory w.r.t. where the files are to be searched (defaults to the directory containing the csv_data_file).
         """
         self.image_names = []
-        self.image_data  = {}
-        self.base_dir    = base_dir
+        self.image_data = {}
+        self.base_dir = base_dir
 
         # Take base_dir from annotations file if not explicitly specified.
         if self.base_dir is None:
@@ -156,7 +180,7 @@ class CSVGenerator(Generator):
 
         # parse the provided class file
         try:
-            with _open_for_csv(csv_class_file) as file:
+            with open_for_csv(csv_class_file) as file:
                 self.classes = _read_classes(csv.reader(file, delimiter=','))
         except ValueError as e:
             raise_from(ValueError('invalid CSV class file: {}: {}'.format(csv_class_file, e)), None)
@@ -167,8 +191,8 @@ class CSVGenerator(Generator):
 
         # csv with img_path, x1, y1, x2, y2, class_name
         try:
-            with _open_for_csv(csv_data_file) as file:
-                self.image_data = _read_annotations(csv.reader(file, delimiter=','), self.classes)
+            with open_for_csv(csv_data_file) as file:
+                self.image_data = read_annotations(csv.reader(file, delimiter=','), self.classes)
         except ValueError as e:
             raise_from(ValueError('invalid CSV annotations file: {}: {}'.format(csv_data_file, e)), None)
         self.image_names = list(self.image_data.keys())
@@ -215,9 +239,9 @@ class CSVGenerator(Generator):
     def load_annotations(self, image_index):
         """ Load annotations for an image_index.
         """
-        path   = self.image_names[image_index]
+        path = self.image_names[image_index]
         annots = self.image_data[path]
-        boxes  = np.zeros((len(annots), 5))
+        boxes = np.zeros((len(annots), 5))
 
         for idx, annot in enumerate(annots):
             class_name = annot['class']
