@@ -90,7 +90,7 @@ def create_generator(args):
             subset=args.subset,
             version=args.version,
             labels_filter=args.labels_filter,
-            fixed_labels=args.fixed_labels,
+            parent_label=args.parent_label,
             annotation_cache_dir=args.annotation_cache_dir,
             transform_generator=transform_generator,
             image_min_side=args.image_min_side,
@@ -138,7 +138,7 @@ def parse_args(args):
     oid_parser.add_argument('--version',  help='The current dataset version is v4.', default='v4')
     oid_parser.add_argument('--labels-filter',  help='A list of labels to filter.', type=csv_list, default=None)
     oid_parser.add_argument('--annotation-cache-dir', help='Path to store annotation cache.', default='.')
-    oid_parser.add_argument('--fixed-labels', help='Use the exact specified labels.', default=False)
+    oid_parser.add_argument('--parent-label', help='Use the hierarchy children of this label.', default=None)
 
     csv_parser = subparsers.add_parser('csv')
     csv_parser.add_argument('annotations', help='Path to CSV file containing annotations for evaluation.')
@@ -177,11 +177,14 @@ def run(generator, args):
             image, image_scale = generator.resize_image(image)
             annotations[:, :4] *= image_scale
 
+        anchors = anchors_for_shape(image.shape)
+
+        labels_batch, regression_batch, boxes_batch = generator.compute_anchor_targets(anchors, [image], [annotations], generator.num_classes())
+        anchor_states                               = labels_batch[0, :, -1]
+
         # draw anchors on the image
         if args.anchors:
-            anchors = anchors_for_shape(image.shape)
-            labels, anchors, anchor_states = generator.compute_anchor_targets(anchors, annotations, generator.num_classes())
-            draw_boxes(image, anchors[anchor_states == 1, :], (0, 255, 0), thickness=1)
+            draw_boxes(image, boxes_batch[0, anchor_states == 1, :], (0, 255, 0), thickness=1)
 
         # draw annotations on the image
         if args.annotations:
@@ -190,9 +193,7 @@ def run(generator, args):
 
             # draw regressed anchors in green to override most red annotations
             # result is that annotations without anchors are red, with anchors are green
-            anchors = anchors_for_shape(image.shape)
-            labels, boxes, anchor_states = generator.compute_anchor_targets(anchors, annotations, generator.num_classes())
-            draw_boxes(image, boxes[anchor_states == 1, :], (0, 255, 0))
+            draw_boxes(image, boxes_batch[0, anchor_states == 1, :], (0, 255, 0))
 
         cv2.imshow('Image', image)
         if cv2.waitKey() == ord('q'):
