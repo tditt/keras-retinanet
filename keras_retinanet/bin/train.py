@@ -24,6 +24,7 @@ import warnings
 import keras
 import keras.preprocessing.image
 import tensorflow as tf
+import math
 
 # Allow relative imports when being executed as script.
 if __name__ == "__main__" and __package__ is None:
@@ -213,14 +214,14 @@ def create_generators(args, preprocess_image):
     # create random transform generator for augmenting training data
     if args.random_transform:
         transform_generator = random_transform_generator(
-            min_rotation=-0.1,
-            max_rotation=0.1,
-            min_translation=(-0.1, -0.1),
+            min_rotation=-math.pi,
+            max_rotation=math.pi,
+            min_translation=(0, 0),
             max_translation=(0.1, 0.1),
-            min_shear=-0.1,
-            max_shear=0.1,
-            min_scaling=(0.9, 0.9),
-            max_scaling=(1.1, 1.1),
+            min_shear=0,
+            max_shear=0,
+            min_scaling=(1, 1),
+            max_scaling=(1, 1),
             flip_x_chance=0.5,
             flip_y_chance=0.5,
         )

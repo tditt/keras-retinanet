@@ -61,7 +61,7 @@ def _read_classes(csv_reader):
 
 
 def _limit(v, v_min, v_max):
-    return min(max(v, min), max)
+    return min(max(v, v_min), v_max)
 
 
 def read_annotations(csv_reader, classes):

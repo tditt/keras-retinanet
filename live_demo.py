@@ -1,6 +1,5 @@
 import sys
 import time
-
 import cv2
 import keras
 import matplotlib.pyplot as plt
@@ -8,7 +7,6 @@ import numpy as np
 import pyscreenshot
 import tensorflow as tf
 from system_hotkey import SystemHotkey
-
 from keras_retinanet.models import load_model
 from keras_retinanet.utils.image import preprocess_image, resize_image
 from keras_retinanet.utils.visualization import draw_box, draw_caption
@@ -24,9 +22,10 @@ print('initializing session and model...')
 sess = _get_session()
 keras.backend.tensorflow_backend.set_session(sess)
 stay_looped = True
-model = load_model('snapshots/inference_resnet50_csv_50.h5', backbone_name='resnet50')
+model = load_model('snapshots/inference_resnet50_csv_16.h5', backbone_name='resnet50')
+# model = load_model('resnet50_csv_26.h5', backbone_name='resnet50', convert=True)
 graph = tf.get_default_graph()
-print('...done!')
+print('...ready!')
 
 
 def main():
@@ -65,7 +64,7 @@ def _capture_and_detect():
     boxes /= scale
     crater_count = 0
     for box, score, label in zip(boxes[0], scores[0], labels[0]):
-        if score < 0.05:
+        if score < 0.5:
             break
         crater_count += 1
         b = box.astype(int)
