@@ -56,7 +56,7 @@ class Evaluate(keras.callbacks.Callback):
             score_threshold=self.score_threshold,
             max_detections=self.max_detections,
             save_path=self.save_path,
-            print_evaluation=False
+            print_evaluation=True
         )
 
         # compute per class average precision

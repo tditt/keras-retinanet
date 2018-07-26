@@ -93,12 +93,21 @@ def read_annotations(csv_reader, classes):
         width = _parse(width, int, 'line {}: malformed x2: {{}}'.format(line))
         height = _parse(height, int, 'line {}: malformed y2: {{}}'.format(line))
 
-        # Don't add boxes where longest side is less than 7 pixels or the shortest less than 4
-        if max(width, height) < 7: continue
-        if min(width, height) < 4: continue
+
+
+        # Don't add boxes where longest side is less than 9 pixels or the shortest less than 6
+        if max(width, height) < 9: continue
+        if min(width, height) < 6: continue
 
         x2 = x1 + width
         y2 = y1 + height
+
+
+        # # add 1 pixel padding to each side of bounding box to make up for low-res inaccuracy
+        # x1 -= 1
+        # y1 -= 1
+        # x2 += 1
+        # y2 += 1
 
         # Cut off boxes at image borders
         x1 = _limit(x1, 0, 415)
