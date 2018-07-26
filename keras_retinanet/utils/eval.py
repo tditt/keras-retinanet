@@ -217,41 +217,47 @@ def _eval_iou(iou, generator, all_detections, all_annotations):
     return metrics
 
 
+def _print_to_log(*args, **kwargs):
+    print(*args, **kwargs)
+    with open('evaluation.log', 'a') as file:
+        print(*args, **kwargs, file=file)
+
+
 def _print_evaluation(metrics, generator):
     present_classes = 0
     all_classes_ap = 0
     all_classes_ap50 = 0
     all_classes_ap75 = 0
-    print('############################## Evaluation Results #################################')
+    _print_to_log('############################## Evaluation Results #################################')
     for label, (eval_metrics, ap, ap50, ap75) in metrics.items():
         (iou, num_annotations, num_detections, true_pos_count, true_pos_percentage, false_pos_count,
          false_pos_percentage, false_neg_count, false_neg_percentage, precision, recall, f1,
          average_precision) = eval_metrics
-        print('---------------------------------class ', generator.label_to_name(label))
-        print('{:.0f} annotations of class'.format(num_annotations), generator.label_to_name(label), 'with:')
-        print('{:.0f} annotations not detected'.format(false_neg_count),
-              '({:.4f} false negatives)'.format(false_neg_percentage))
-        print('{:.0f} detections of class'.format(num_detections), generator.label_to_name(label), 'with:')
-        print('IOU of {:.2f}'.format(iou))
-        print('{:.0f} matches'.format(true_pos_count), '({:.4f} true positives)'.format(true_pos_percentage))
-        print('{:.0f} false detections'.format(false_pos_count),
-              '({:.4f} false positives)'.format(false_pos_percentage))
-        print('precision: {:.4f}'.format(precision))
-        print('recall: {:.4f}'.format(recall))
-        print('f1 score: {:.4f}'.format(f1))
-        print('average precision for this IOU: {:.4f}'.format(average_precision))
-        print('class mAP: {:.4f}'.format(ap), 'class mAP50: {:.4f}'.format(ap50),
-              'class mAP75: {:.4f}'.format(ap75))
-        print('-----------------------------------------------------------------------')
+        _print_to_log('---------------------------------class ', generator.label_to_name(label))
+        _print_to_log('{:.0f} annotations of class'.format(num_annotations), generator.label_to_name(label), 'with:')
+        _print_to_log('{:.0f} annotations not detected'.format(false_neg_count),
+                      '({:.4f} false negatives)'.format(false_neg_percentage))
+        _print_to_log('{:.0f} detections of class'.format(num_detections), generator.label_to_name(label), 'with:')
+        _print_to_log('IOU of {:.2f}'.format(iou))
+        _print_to_log('{:.0f} matches'.format(true_pos_count), '({:.4f} true positives)'.format(true_pos_percentage))
+        _print_to_log('{:.0f} false detections'.format(false_pos_count),
+                      '({:.4f} false positives)'.format(false_pos_percentage))
+        _print_to_log('precision: {:.4f}'.format(precision))
+        _print_to_log('recall: {:.4f}'.format(recall))
+        _print_to_log('f1 score: {:.4f}'.format(f1))
+        _print_to_log('average precision for this IOU: {:.4f}'.format(average_precision))
+        _print_to_log('class mAP: {:.4f}'.format(ap), 'class mAP50: {:.4f}'.format(ap50),
+                      'class mAP75: {:.4f}'.format(ap75))
+        _print_to_log('-----------------------------------------------------------------------')
         if num_annotations > 0:
             present_classes += 1
             all_classes_ap += ap
             all_classes_ap50 += ap50
             all_classes_ap75 += ap75
-    print('all classes: mAP : {:.4f}'.format(all_classes_ap / present_classes),
-          'mAP50 : {:.4f}'.format(all_classes_ap50 / present_classes),
-          'mAP75 : {:.4f}'.format(all_classes_ap75 / present_classes))
-    print('#################################################################################')
+    _print_to_log('all classes: mAP : {:.4f}'.format(all_classes_ap / present_classes),
+                  'mAP50 : {:.4f}'.format(all_classes_ap50 / present_classes),
+                  'mAP75 : {:.4f}'.format(all_classes_ap75 / present_classes))
+    _print_to_log('#################################################################################')
 
 
 def evaluate(
