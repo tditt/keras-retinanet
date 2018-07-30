@@ -95,9 +95,9 @@ def read_annotations(csv_reader, classes):
 
 
 
-        # Don't add boxes where longest side is less than 9 pixels or the shortest less than 6
-        if max(width, height) < 9: continue
-        if min(width, height) < 6: continue
+        # Don't add boxes where longest side is less than 15 pixels or the shortest less than 10
+        if max(width, height) < 15: continue
+        if min(width, height) < 10: continue
 
         x2 = x1 + width
         y2 = y1 + height
