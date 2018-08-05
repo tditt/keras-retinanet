@@ -101,23 +101,23 @@ def create_models(backbone_retinanet, num_classes, weights, multi_gpu=0, freeze_
     """
     modifier = freeze_model if freeze_backbone else None
 
-    anchor_parameters = AnchorParameters(
-        sizes=[32, 64, 128, 256, 512],
-        strides=[8, 16, 32, 64, 128],
-        ratios=np.array([0.7, 1, 1.3], keras.backend.floatx()),
-        scales=np.array([0.6, 0.8, 1, 1.2, 1.4, 1.6, 1.8, 2], keras.backend.floatx()))
+    # anchor_parameters = AnchorParameters(
+    #     sizes=[32, 64, 128, 256, 512],
+    #     strides=[8, 16, 32, 64, 128],
+    #     ratios=np.array([0.7, 1, 1.3], keras.backend.floatx()),
+    #     scales=np.array([0.6, 0.8, 1, 1.2, 1.4, 1.6, 1.8, 2], keras.backend.floatx()))
+
     # Keras recommends initialising a multi-gpu model on the CPU to ease weight sharing, and to prevent OOM errors.
     # optionally wrap in a parallel model
     if multi_gpu > 1:
         from keras.utils import multi_gpu_model
         with tf.device('/cpu:0'):
-            model = model_with_weights(backbone_retinanet(num_classes, modifier=modifier,
-                                                          anchor_parameters=anchor_parameters), weights=weights,
+            model = model_with_weights(backbone_retinanet(num_classes, modifier=modifier), weights=weights,
                                        skip_mismatch=True)
         training_model = multi_gpu_model(model, gpus=multi_gpu)
     else:
         model = model_with_weights(
-            backbone_retinanet(num_classes,  modifier=modifier, anchor_parameters=anchor_parameters),
+            backbone_retinanet(num_classes, modifier=modifier),
             weights=weights, skip_mismatch=True)
         training_model = model
 
