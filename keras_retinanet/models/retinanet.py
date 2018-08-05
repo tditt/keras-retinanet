@@ -33,7 +33,7 @@ def default_classification_model(
 
     Args
         num_classes                 : Number of classes to predict a score for at each feature level.
-        num_anchors                 : Number of anchors to predict classification scores for at each feature level.
+        _print_to_log(hors                 : Number of anchors to predict classification scores for at each feature level.
         pyramid_feature_size        : The number of filters to expect from the feature pyramid levels.
         classification_feature_size : The number of filters to use in the layers in the classification submodel.
         name                        : The name of the submodel.
@@ -258,7 +258,7 @@ def retinanet(
     inputs,
     backbone_layers,
     num_classes,
-    num_anchors             = 24,
+    num_anchors             = 30,
     create_pyramid_features = __create_pyramid_features,
     submodels               = None,
     name                    = 'retinanet'
