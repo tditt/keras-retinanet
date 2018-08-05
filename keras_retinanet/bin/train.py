@@ -101,8 +101,6 @@ def create_models(backbone_retinanet, num_classes, weights, multi_gpu=0, freeze_
     """
     modifier = freeze_model if freeze_backbone else None
 
-    # TODO: change for custom backbone
-    backbone = 'resnet50'
     anchor_parameters = AnchorParameters(
         sizes=[32, 64, 128, 256, 512],
         strides=[8, 16, 32, 64, 128],
@@ -113,13 +111,13 @@ def create_models(backbone_retinanet, num_classes, weights, multi_gpu=0, freeze_
     if multi_gpu > 1:
         from keras.utils import multi_gpu_model
         with tf.device('/cpu:0'):
-            model = model_with_weights(backbone_retinanet(num_classes, backbone=backbone, modifier=modifier,
+            model = model_with_weights(backbone_retinanet(num_classes, modifier=modifier,
                                                           anchor_parameters=anchor_parameters), weights=weights,
                                        skip_mismatch=True)
         training_model = multi_gpu_model(model, gpus=multi_gpu)
     else:
         model = model_with_weights(
-            backbone_retinanet(num_classes, backbone=backbone, modifier=modifier, anchor_parameters=anchor_parameters),
+            backbone_retinanet(num_classes,  modifier=modifier, anchor_parameters=anchor_parameters),
             weights=weights, skip_mismatch=True)
         training_model = model
 
