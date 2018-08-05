@@ -177,7 +177,7 @@ AnchorParameters.default = AnchorParameters(
     sizes=[32, 64, 128, 256, 512],
     strides=[8, 16, 32, 64, 128],
     ratios=np.array([0.7, 1, 1.3], keras.backend.floatx()),
-    scales=np.array([0.6, 0.8, 1, 1.2, 1.4, 1.6, 1.8, 2], keras.backend.floatx())
+    scales=np.array([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1], keras.backend.floatx())
 )
 
 
