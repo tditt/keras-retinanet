@@ -54,7 +54,7 @@ def _compute_ap(recall, precision):
     return ap
 
 
-def _get_detections(generator, model, score_threshold=0.05, max_detections=100, save_path=None):
+def _get_detections(generator, model, score_threshold=0.5, max_detections=500, save_path=None):
     """ Get the detections from the model using the generator.
 
     The result is a list of lists such that the size is:
@@ -79,22 +79,35 @@ def _get_detections(generator, model, score_threshold=0.05, max_detections=100, 
         # run network
         boxes, scores, labels = model.predict_on_batch(np.expand_dims(image, axis=0))[:3]
 
+        #filter out boxes that are too small
+        box_minimum = 18
+        valid_box_indices = []
+        for b, box in enumerate(boxes[0]):
+            width = box[2] - box[0]
+            height = box[3] - box[1]
+            if width > box_minimum and height > box_minimum:
+                valid_box_indices.append(b)
+
+        valid_boxes = boxes[0][valid_box_indices]
+        valid_scores = scores[0][valid_box_indices]
+        valid_labels = labels[0][valid_box_indices]
+
         # correct boxes for image scale
-        boxes /= scale
+        valid_boxes /= scale
 
         # select indices which have a score above the threshold
-        indices = np.where(scores[0, :] > score_threshold)[0]
+        indices = np.where(valid_scores > score_threshold)[0]
 
         # select those scores
-        scores = scores[0][indices]
+        valid_scores = valid_scores[indices]
 
         # find the order with which to sort the scores
-        scores_sort = np.argsort(-scores)[:max_detections]
+        scores_sort = np.argsort(-valid_scores)[:max_detections]
 
         # select detections
-        image_boxes = boxes[0, indices[scores_sort], :]
-        image_scores = scores[scores_sort]
-        image_labels = labels[0, indices[scores_sort]]
+        image_boxes = valid_boxes[indices[scores_sort]]
+        image_scores = valid_scores[scores_sort]
+        image_labels = valid_labels[indices[scores_sort]]
         image_detections = np.concatenate(
             [image_boxes, np.expand_dims(image_scores, axis=1), np.expand_dims(image_labels, axis=1)], axis=1)
 
@@ -265,7 +278,7 @@ def evaluate(
         model,
         iou_threshold=0.5,
         score_threshold=0.05,
-        max_detections=100,
+        max_detections=500,
         save_path=None,
         print_evaluation=True
 ):

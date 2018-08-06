@@ -93,15 +93,11 @@ def read_annotations(csv_reader, classes):
         width = _parse(width, int, 'line {}: malformed x2: {{}}'.format(line))
         height = _parse(height, int, 'line {}: malformed y2: {{}}'.format(line))
 
-
-
-        # Don't add boxes where longest side is less than 15 pixels or the shortest less than 10
-        # if max(width, height) < 13: continue
-        # if min(width, height) < 8: continue
+        # Filter out tiny craters
+        if width <= 10 or height <= 10: continue
 
         x2 = x1 + width
         y2 = y1 + height
-
 
         # # add 1 pixel padding to each side of bounding box to make up for low-res inaccuracy
         # x1 -= 1
