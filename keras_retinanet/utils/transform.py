@@ -15,6 +15,7 @@ limitations under the License.
 """
 
 import numpy as np
+import math
 
 DEFAULT_PRNG = np.random
 
@@ -200,16 +201,16 @@ def change_transform_origin(transform, center):
 
 
 def random_transform(
-    min_rotation=0,
-    max_rotation=0,
-    min_translation=(0, 0),
-    max_translation=(0, 0),
-    min_shear=0,
-    max_shear=0,
-    min_scaling=(1, 1),
-    max_scaling=(1, 1),
-    flip_x_chance=0.5,
-    flip_y_chance=0.5,
+        min_rotation=math.pi,
+        max_rotation=-math.pi,
+        min_translation=(0, 0),
+        max_translation=(0, 0),
+        min_shear=0,
+        max_shear=0.5,
+        min_scaling=(.5, .5),
+        max_scaling=(1.5, 1.5),
+        flip_x_chance=0.5,
+        flip_y_chance=0.5,
     prng=DEFAULT_PRNG
 ):
     """ Create a random transformation.
