@@ -227,8 +227,8 @@ def create_generators(args, preprocess_image):
     # create random transform generator for augmenting training data
     if args.random_transform:
         transform_generator = random_transform_generator(
-            min_rotation=math.pi,
-            max_rotation=-math.pi,
+            min_rotation=0,
+            max_rotation=0,
             min_translation=(0, 0),
             max_translation=(0, 0),
             min_shear=0,
@@ -236,7 +236,7 @@ def create_generators(args, preprocess_image):
             min_scaling=(.5, .5),
             max_scaling=(1.5, 1.5),
             flip_x_chance=0.5,
-            flip_y_chance=0.5,
+            flip_y_chance=0.5
         )
     else:
         transform_generator = random_transform_generator(flip_x_chance=0.5)

@@ -201,8 +201,8 @@ def change_transform_origin(transform, center):
 
 
 def random_transform(
-        min_rotation=math.pi,
-        max_rotation=-math.pi,
+        min_rotation=0,
+        max_rotation=0,
         min_translation=(0, 0),
         max_translation=(0, 0),
         min_shear=0,
