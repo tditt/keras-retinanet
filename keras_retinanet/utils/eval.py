@@ -80,7 +80,7 @@ def _get_detections(generator, model, score_threshold=0.5, max_detections=500, s
         boxes, scores, labels = model.predict_on_batch(np.expand_dims(image, axis=0))[:3]
 
         #filter out boxes that are too small
-        box_minimum = 18
+        box_minimum = 15
         valid_box_indices = []
         for b, box in enumerate(boxes[0]):
             width = box[2] - box[0]

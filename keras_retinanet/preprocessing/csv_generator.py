@@ -94,7 +94,7 @@ def read_annotations(csv_reader, classes):
         height = _parse(height, int, 'line {}: malformed y2: {{}}'.format(line))
 
         # Filter out tiny craters
-        if width <= 10 or height <= 10: continue
+        if width <= 12 or height <= 12: continue
 
         x2 = x1 + width
         y2 = y1 + height

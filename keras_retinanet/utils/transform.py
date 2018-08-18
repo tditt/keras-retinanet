@@ -206,9 +206,9 @@ def random_transform(
         min_translation=(0, 0),
         max_translation=(0, 0),
         min_shear=0,
-        max_shear=0.5,
-        min_scaling=(.5, .5),
-        max_scaling=(1.5, 1.5),
+        max_shear=0,
+        min_scaling=(1, 1),
+        max_scaling=(1, 1),
         flip_x_chance=0.5,
         flip_y_chance=0.5,
     prng=DEFAULT_PRNG
