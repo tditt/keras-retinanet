@@ -79,7 +79,7 @@ def _get_detections(generator, model, score_threshold=0.5, max_detections=500, s
         # run network
         boxes, scores, labels = model.predict_on_batch(np.expand_dims(image, axis=0))[:3]
 
-        #filter out boxes that are too small
+        # filter out boxes that are too small
         box_minimum = 15
         valid_box_indices = []
         for b, box in enumerate(boxes[0]):
@@ -113,7 +113,8 @@ def _get_detections(generator, model, score_threshold=0.5, max_detections=500, s
 
         if save_path is not None:
             draw_annotations(raw_image, generator.load_annotations(i), label_to_name=generator.label_to_name)
-            draw_detections(raw_image, image_boxes, image_scores, image_labels, label_to_name=generator.label_to_name)
+            draw_detections(raw_image, image_boxes, image_scores, image_labels, color=(0, 255, 0),
+                            label_to_name=generator.label_to_name)
 
             cv2.imwrite(os.path.join(save_path, '{}.png'.format(i)), raw_image)
 
@@ -280,7 +281,7 @@ def evaluate(
         score_threshold=0.05,
         max_detections=500,
         save_path=None,
-        print_evaluation=True
+        print_evaluation=True,
 ):
     """ Evaluate a given dataset using a given model.
 

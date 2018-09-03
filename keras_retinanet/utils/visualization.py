@@ -33,7 +33,7 @@ def draw_box(image, box, color, thickness=1):
     cv2.rectangle(image, (b[0], b[1]), (b[2], b[3]), color, thickness, cv2.LINE_AA)
 
 
-def draw_caption(image, box, caption):
+def draw_caption(image, box, caption, color=(255, 255, 255)):
     """ Draws a caption above the box in an image.
 
     # Arguments
@@ -43,7 +43,7 @@ def draw_caption(image, box, caption):
     """
     b = np.array(box).astype(int)
     cv2.putText(image, caption, (b[0], b[1] - 10), cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 0), 2)
-    cv2.putText(image, caption, (b[0], b[1] - 10), cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255), 1)
+    cv2.putText(image, caption, (b[0], b[1] - 10), cv2.FONT_HERSHEY_PLAIN, 1, color, 1)
 
 
 def draw_boxes(image, boxes, color, thickness=1):
@@ -78,11 +78,12 @@ def draw_detections(image, boxes, scores, labels, color=None, label_to_name=None
         draw_box(image, boxes[i, :], color=c)
 
         # draw labels
-        caption = (label_to_name(labels[i]) if label_to_name else labels[i]) + ': {0:.2f}'.format(scores[i])
-        draw_caption(image, boxes[i, :], caption)
+        # caption = (label_to_name(labels[i]) if label_to_name else labels[i]) + ': {0:.2f}'.format(scores[i])
+        caption = '{0:.2f}'.format(scores[i])
+        draw_caption(image, boxes[i, :], caption, color=(0, 255, 0))
 
 
-def draw_annotations(image, annotations, color=(0, 255, 0), label_to_name=None):
+def draw_annotations(image, annotations, color=(255, 0, 0), label_to_name=None):
     """ Draws annotations in an image.
 
     # Arguments
@@ -92,9 +93,9 @@ def draw_annotations(image, annotations, color=(0, 255, 0), label_to_name=None):
         label_to_name : (optional) Functor for mapping a label to a name.
     """
     for a in annotations:
-        label   = a[4]
-        c       = color if color is not None else label_color(label)
-        caption = '{}'.format(label_to_name(label) if label_to_name else label)
-        draw_caption(image, a, caption)
+        label = a[4]
+        c = color if color is not None else label_color(label)
+        #caption = '{}'.format(label_to_name(label) if label_to_name else label)
+        #draw_caption(image, a, caption)
 
         draw_box(image, a, color=c)
